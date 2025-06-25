@@ -1,14 +1,34 @@
 const { capitalize, singularize } = require('./utils');
 
+const SERIALIZERS = {
+    'jackson': {
+        annotation: key => `@JsonProperty("${key}")`,
+        importLine: 'import com.fasterxml.jackson.annotation.JsonProperty;'
+    },
+    'gson': {
+        annotation: key => `@SerializedName("${key}")`,
+        importLine: 'import com.google.gson.annotations.SerializedName;'
+    },
+    'jakarta': {
+        annotation: key => `@JsonbProperty("${key}")`,
+        importLine: 'import jakarta.json.bind.annotation.JsonbProperty;'
+    }
+};
+
 /**
  * Generate Java classes recursively from metadata
  * @param metadata Contains the object schema parsed from the input file.
  * @param rootName The name of the root element in the schema.
+ * @param options Configuration options.
  * @returns {any[]} Array of Java class definitions.
  */
-function generateJavaModels(metadata, rootName = "Root") {
+function generateJavaModels(metadata, rootName = "Root",  options) {
     if (metadata.type !== 'object') throw new Error('Root must be an object');
 
+    const serializer = options['serializer']?.toLowerCase();
+    if (serializer && !SERIALIZERS[serializer]) {
+        console.warn(`Unsupported serializer ${serializer}`);
+    }
     const classes = new Map();
 
     function toJavaType(meta, propName) {
@@ -51,7 +71,10 @@ function generateJavaModels(metadata, rootName = "Root") {
 
         // Fields
         for (const [key, val] of Object.entries(meta.properties)) {
-            // todo: account for serialization annotations
+            if (SERIALIZERS[serializer] && key !== val.key) {
+                const { annotation } = SERIALIZERS[serializer];
+                lines.push(`\t${annotation(val.key)}`);
+            }
             lines.push(`\tprivate ${toJavaType(val, key)} ${key};`);
         }
         lines.push('');

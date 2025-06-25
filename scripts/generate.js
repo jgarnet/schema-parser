@@ -2,6 +2,7 @@ const { readFileSync, writeFileSync, rmSync, mkdirSync } = require('fs');
 const generateMetadata = require('../src/generate-metadata');
 const generateJavaModels = require('../src/generate-java-models');
 const generateTypescriptModels = require('../src/generate-typescript-models');
+const { getOptions, capitalize } = require('../src/utils');
 
 const CLASS_REGEX = /public\s+class\s+([A-Za-z_]\w*)/;
 const INTERFACE_REGEX = /interface\s+([A-Za-z_]\w*)/;
@@ -12,14 +13,15 @@ function stageOutput() {
 }
 
 function execute() {
-    const type = process.argv[2] ?? 'invalid';
-    const rootName = process.argv[3];
+    const options =  getOptions();
+    const type = options['type'] ?? 'invalid';
+    const rootName = capitalize(options['rootName']);
     const input = readFileSync('input.txt', 'utf-8');
     const metadata = generateMetadata(JSON.parse(input));
     switch (type.toLowerCase()) {
         case 'java':
             stageOutput();
-            const classes = generateJavaModels(metadata, rootName);
+            const classes = generateJavaModels(metadata, rootName, options);
             for (const result of classes) {
                 const className = result.match(CLASS_REGEX)[0].split(/\s/)[2];
                 writeFileSync(`output/${className}.java`, result);
