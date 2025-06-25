@@ -55,7 +55,7 @@ function generateTypeScriptModels(metadata, rootName = "Root") {
     for (const [name, meta] of models) {
         const lines = [`interface ${name} {`];
         for (const [key, val] of Object.entries(meta.properties)) {
-            lines.push(`  ${key}: ${renderType(val, key)};`);
+            lines.push(`\t${key}: ${renderType(val, key)};`);
         }
         lines.push('}');
         rendered.push(lines.join('\n'));

@@ -51,7 +51,8 @@ function generateJavaModels(metadata, rootName = "Root") {
 
         // Fields
         for (const [key, val] of Object.entries(meta.properties)) {
-            lines.push(`    private ${toJavaType(val, key)} ${key};`);
+            // todo: account for serialization annotations
+            lines.push(`\tprivate ${toJavaType(val, key)} ${key};`);
         }
         lines.push('');
 
@@ -60,14 +61,14 @@ function generateJavaModels(metadata, rootName = "Root") {
             const type = toJavaType(val, key);
             const capKey = capitalize(key);
 
-            lines.push(`    public ${type} get${capKey}() {`);
-            lines.push(`        return ${key};`);
-            lines.push('    }');
+            lines.push(`\tpublic ${type} get${capKey}() {`);
+            lines.push(`\t\treturn ${key};`);
+            lines.push('\t}');
             lines.push('');
 
-            lines.push(`    public void set${capKey}(${type} ${key}) {`);
-            lines.push(`        this.${key} = ${key};`);
-            lines.push('    }');
+            lines.push(`\tpublic void set${capKey}(${type} ${key}) {`);
+            lines.push(`\t\tthis.${key} = ${key};`);
+            lines.push('\t}');
             lines.push('');
         }
 

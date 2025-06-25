@@ -8,7 +8,16 @@ function singularize(name) {
     return name;
 }
 
+function snakeToCamel(name) {
+    const parts = name.toLowerCase().split('_');
+    if (parts.length > 1) {
+        return parts[0].toLowerCase() + parts.slice(1).map(capitalize).join('');
+    }
+    return name;
+}
+
 module.exports = {
     capitalize,
-    singularize
+    singularize,
+    snakeToCamel
 };

@@ -1,3 +1,4 @@
+const {snakeToCamel} = require("./utils");
 const DECIMAL_REGEX = /^-?\d+(\.\d+)$/;
 
 function isDate(value) {
@@ -29,7 +30,10 @@ function analyzeJsonStructure(data) {
         if (typeof value === 'object') {
             const props = {};
             for (const key in value) {
-                props[key] = analyze(value[key]);
+                props[snakeToCamel(key)] = {
+                    key,
+                    ...analyze(value[key])
+                };
             }
             return { type: 'object', properties: props };
         }
