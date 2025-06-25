@@ -1,0 +1,75 @@
+function generateTypeScriptModels(metadata, rootName = "Root") {
+    const models = new Map();
+
+    function capitalize(str) {
+        return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    function singularize(name) {
+        if (name.endsWith('ies')) return name.slice(0, -3) + 'y';
+        if (name.endsWith('s')) return name.slice(0, -1);
+        return name;
+    }
+
+    function renderType(meta, propName) {
+        switch (meta.type) {
+            case 'string':
+            case 'boolean':
+            case 'null':
+                return meta.type === 'null' ? 'null' : meta.type;
+            case 'decimal':
+            case 'integer':
+                return 'number';
+            case 'date':
+                return 'Date';
+            case 'array':
+                if (Array.isArray(meta.elementType)) {
+                    const unionTypes = meta.elementType.map(et => renderType(et, propName)).join(' | ');
+                    return `Array<${unionTypes}>`;
+                } else {
+                    if (meta.elementType.type === 'object') {
+                        const typeName = capitalize(singularize(propName));
+                        addModel(typeName, meta.elementType);
+                        return `Array<${typeName}>`;
+                    } else {
+                        return `Array<${renderType(meta.elementType, propName)}>`;
+                    }
+                }
+            case 'object':
+                const typeName = capitalize(propName);
+                addModel(typeName, meta);
+                return typeName;
+            default:
+                return 'any';
+        }
+    }
+
+    function addModel(name, meta) {
+        if (models.has(name)) return;
+        if (meta.type !== 'object') return;
+        models.set(name, meta);
+        for (const [key, val] of Object.entries(meta.properties)) {
+            if (val.type === 'object') {
+                addModel(capitalize(key), val);
+            } else if (val.type === 'array' && val.elementType.type === 'object') {
+                addModel(capitalize(singularize(key)), val.elementType);
+            }
+        }
+    }
+
+    addModel(rootName, metadata);
+
+    const rendered = [];
+    for (const [name, meta] of models) {
+        const lines = [`interface ${name} {`];
+        for (const [key, val] of Object.entries(meta.properties)) {
+            lines.push(`  ${key}: ${renderType(val, key)};`);
+        }
+        lines.push('}');
+        rendered.push(lines.join('\n')); // Make sure to join with '\n' here
+    }
+
+    return rendered;
+}
+
+module.exports = generateTypeScriptModels;
