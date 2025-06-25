@@ -58,7 +58,7 @@ function generateTypeScriptModels(metadata, rootName = "Root") {
             lines.push(`  ${key}: ${renderType(val, key)};`);
         }
         lines.push('}');
-        rendered.push(lines.join('\n')); // Make sure to join with '\n' here
+        rendered.push(lines.join('\n'));
     }
 
     return rendered;
