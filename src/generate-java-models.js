@@ -1,18 +1,15 @@
-// Generate Java classes recursively from metadata
+const { capitalize, singularize } = require('./utils');
+
+/**
+ * Generate Java classes recursively from metadata
+ * @param metadata Contains the object schema parsed from the input file.
+ * @param rootName The name of the root element in the schema.
+ * @returns {any[]} Array of Java class definitions.
+ */
 function generateJavaModels(metadata, rootName = "Root") {
     if (metadata.type !== 'object') throw new Error('Root must be an object');
 
     const classes = new Map();
-
-    function capitalize(str) {
-        return str.charAt(0).toUpperCase() + str.slice(1);
-    }
-
-    function singularize(name) {
-        if (name.endsWith('ies')) return name.slice(0, -3) + 'y';
-        if (name.endsWith('s')) return name.slice(0, -1);
-        return name;
-    }
 
     function toJavaType(meta, propName) {
         switch (meta.type) {

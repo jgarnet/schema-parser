@@ -5,7 +5,11 @@ function isDate(value) {
     return date instanceof Date && !isNaN(date.getTime());
 }
 
-// Analyze JSON structure recursively to create metadata describing types
+/**
+ * Analyze JSON structure recursively to create metadata describing types
+ * @param data JSON input.
+ * @returns object schema metadata.
+ */
 function analyzeJsonStructure(data) {
     function analyze(value) {
         if (value === null) return { type: 'null' };
