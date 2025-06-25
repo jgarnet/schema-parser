@@ -16,7 +16,7 @@ The supported output types are:
 - java
 - typescript
 
-`generate` takes an optional root class option which will be used to name the root model:
+`generate` takes an optional root model name which will be used to name the root model:
 
 ```shell
 yarn generate java MyClass
