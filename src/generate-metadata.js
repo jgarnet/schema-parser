@@ -2,6 +2,7 @@ const {snakeToCamel, singularize, getNodeKey, getParentRef} = require("./utils")
 const DECIMAL_REGEX = /^-?\d+(\.\d+)$/;
 
 function isDate(value) {
+    // todo: fix this, as boolean and some integers are being considered date values
     const date = new Date(value);
     return date instanceof Date && !isNaN(date.getTime());
 }
