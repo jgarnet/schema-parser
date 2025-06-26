@@ -1,4 +1,4 @@
-const {snakeToCamel, singularize} = require("./utils");
+const {snakeToCamel, singularize, getNodeKey, getParentRef} = require("./utils");
 const DECIMAL_REGEX = /^-?\d+(\.\d+)$/;
 
 function isDate(value) {
@@ -45,11 +45,13 @@ function analyzeJsonStructure(data) {
         }
         return { type: typeof value };
     }
-    const metadata = analyze(data);
-    metadata.key = 'root';
+    const schema = analyze(data);
+    schema.key = 'root';
     const seen = new Map();
+    const refs = new Map();
 
     function isSubset(a, b) {
+        if (!a || !b) return false;
         for (let item of a) {
             if (!b.has(item)) {
                 return false;
@@ -58,30 +60,38 @@ function analyzeJsonStructure(data) {
         return true;
     }
 
-    function walk(node, key = undefined) {
+    function walk(node, nestLevel = 0, key = undefined) {
         if (node.type === 'object') {
+            node.nestLevel = nestLevel;
             const propKeys = Object.keys(node.properties);
             const props = propKeys.map(key => `${key}:${node.properties[key].type}`);
-            seen.set(key ?? node.key, new Set(props));
+            seen.set(`${key ?? node.key}-${nestLevel}`, new Set(props));
             for (const key of propKeys) {
-                walk(node.properties[key]);
+                walk(node.properties[key], nestLevel + 1);
             }
         } else if (node.type === 'array') {
-            walk(node.elementType, singularize(node.key));
+            walk(node.elementType, nestLevel + 1, singularize(node.key));
         }
     }
-    walk(metadata);
-    // todo: associate node key to object field id for reference when building models
-    // todo: determine how to parse refs when building models
+    walk(schema);
 
+    function getKey(node) {
+        return `${node.key}-${node.nestLevel}`;
+    }
+
+    // todo: cleanup logic
     function reduce(node) {
         if (node.type === 'object') {
-            const props = seen.get(node.key);
-            for (const [k, v] of seen.entries()) {
+            const nodeKey = getKey(node);
+            const props = seen.get(nodeKey);
+            for (const [_k, v] of seen.entries()) {
+                const k = getNodeKey(_k);
                 if (k !== node.key && isSubset(props, v)) {
                     delete node.properties;
-                    node.ref = k;
-                    seen.delete(node.key);
+                    const targetRef = getParentRef(refs, _k) ?? _k;
+                    node.ref = targetRef;
+                    refs.set(nodeKey, targetRef);
+                    seen.delete(nodeKey);
                     break;
                 }
             }
@@ -89,12 +99,16 @@ function analyzeJsonStructure(data) {
                 reduce(node.properties[prop]);
             }
         } else if (node.type === 'array') {
-            const key = singularize(node.key);
+            const nodeKey = singularize(node.key);
+            const key = `${nodeKey}-${node.nestLevel}`;
             const props = seen.get(key);
-            for (const [k, v] of seen.entries()) {
-                if (k !== key && isSubset(props, v)) {
+            for (const [_k, v] of seen.entries()) {
+                const k = getNodeKey(_k);
+                if (k !== nodeKey && isSubset(props, v)) {
                     delete node.elementType;
-                    node.ref = k;
+                    const targetRef = getParentRef(refs, _k) ?? _k;
+                    node.ref = targetRef;
+                    refs.set(nodeKey, targetRef);
                     seen.delete(key);
                     break;
                 }
@@ -104,8 +118,8 @@ function analyzeJsonStructure(data) {
             }
         }
     }
-    reduce(metadata);
-    return metadata;
+    reduce(schema);
+    return { schema, refs };
 }
 
 module.exports = analyzeJsonStructure;

@@ -1,4 +1,4 @@
-const { capitalize, singularize } = require('./utils');
+const { singularize, getNodeKey, getParentRef, getTypeName} = require('./utils');
 
 const SERIALIZERS = {
     'jackson': {
@@ -23,7 +23,8 @@ const SERIALIZERS = {
  * @returns {any[]} Array of Java class definitions.
  */
 function generateJavaModels(metadata, rootName = "Root",  options) {
-    if (metadata.type !== 'object') throw new Error('Root must be an object');
+    const { schema, refs } = metadata;
+    if (schema.type !== 'object') throw new Error('Root must be an object');
 
     const serializer = options['serializer']?.toLowerCase();
     if (serializer && !SERIALIZERS[serializer]) {
@@ -46,7 +47,11 @@ function generateJavaModels(metadata, rootName = "Root",  options) {
                     return 'List<Object>';
                 } else {
                     if (meta.elementType.type === 'object') {
-                        const typeName = capitalize(singularize(propName));
+                        if (meta.ref) {
+                            const ref = getParentRef(refs, meta.ref) ?? meta.ref;
+                            return `List<${getTypeName(getNodeKey(ref))}>`;
+                        }
+                        const typeName = getTypeName(singularize(propName));
                         addClass(typeName, meta.elementType);
                         return `List<${typeName}>`;
                     } else {
@@ -54,7 +59,11 @@ function generateJavaModels(metadata, rootName = "Root",  options) {
                     }
                 }
             case 'object':
-                const typeName = capitalize(propName);
+                if (meta.ref) {
+                    const ref = getParentRef(refs, meta.ref) ?? meta.ref;
+                    return getTypeName(getNodeKey(ref));
+                }
+                const typeName = getTypeName(propName);
                 addClass(typeName, meta);
                 return typeName;
             default:
@@ -65,6 +74,9 @@ function generateJavaModels(metadata, rootName = "Root",  options) {
     function addClass(className, meta) {
         if (classes.has(className)) return;
         if (meta.type !== 'object') throw new Error('Class must be an object');
+        if (meta.ref) {
+            return;
+        }
 
         const lines = [];
         lines.push(`public class ${className} {`);
@@ -82,7 +94,7 @@ function generateJavaModels(metadata, rootName = "Root",  options) {
         // Getters and setters
         for (const [key, val] of Object.entries(meta.properties)) {
             const type = toJavaType(val, key);
-            const capKey = capitalize(key);
+            const capKey = getTypeName(key);
 
             lines.push(`\tpublic ${type} get${capKey}() {`);
             lines.push(`\t\treturn ${key};`);
@@ -99,7 +111,7 @@ function generateJavaModels(metadata, rootName = "Root",  options) {
         classes.set(className, lines.join('\n'));
     }
 
-    addClass(capitalize(rootName), metadata);
+    addClass(getTypeName(rootName), schema);
 
     return Array.from(classes.values());
 }

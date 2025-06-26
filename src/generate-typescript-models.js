@@ -1,6 +1,7 @@
-const { capitalize, singularize } = require('./utils');
+const { singularize, getParentRef, getNodeKey, getTypeName} = require('./utils');
 
 function generateTypeScriptModels(metadata, rootName = "Root") {
+    const { schema, refs } = metadata;
     const models = new Map();
 
     function renderType(meta, propName) {
@@ -20,7 +21,11 @@ function generateTypeScriptModels(metadata, rootName = "Root") {
                     return `Array<${unionTypes}>`;
                 } else {
                     if (meta.elementType.type === 'object') {
-                        const typeName = capitalize(singularize(propName));
+                        if (meta.ref) {
+                            const ref = getParentRef(refs, meta.ref) ?? meta.ref;
+                            return `Array<${getTypeName(getNodeKey(ref))}>`;
+                        }
+                        const typeName = getTypeName(singularize(propName));
                         addModel(typeName, meta.elementType);
                         return `Array<${typeName}>`;
                     } else {
@@ -28,7 +33,11 @@ function generateTypeScriptModels(metadata, rootName = "Root") {
                     }
                 }
             case 'object':
-                const typeName = capitalize(propName);
+                if (meta.ref) {
+                    const ref = getParentRef(refs, meta.ref) ?? meta.ref;
+                    return getTypeName(getNodeKey(ref));
+                }
+                const typeName = getTypeName(propName);
                 addModel(typeName, meta);
                 return typeName;
             default:
@@ -39,17 +48,18 @@ function generateTypeScriptModels(metadata, rootName = "Root") {
     function addModel(name, meta) {
         if (models.has(name)) return;
         if (meta.type !== 'object') return;
+        if (meta.ref) return;
         models.set(name, meta);
         for (const [key, val] of Object.entries(meta.properties)) {
             if (val.type === 'object') {
-                addModel(capitalize(key), val);
+                addModel(getTypeName(key), val);
             } else if (val.type === 'array' && val.elementType.type === 'object') {
-                addModel(capitalize(singularize(key)), val.elementType);
+                addModel(getTypeName(singularize(key)), val.elementType);
             }
         }
     }
 
-    addModel(rootName, metadata);
+    addModel(rootName, schema);
 
     const rendered = [];
     for (const [name, meta] of models) {
