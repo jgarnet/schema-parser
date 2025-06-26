@@ -1,4 +1,4 @@
-const {snakeToCamel} = require("./utils");
+const {snakeToCamel, singularize} = require("./utils");
 const DECIMAL_REGEX = /^-?\d+(\.\d+)$/;
 
 function isDate(value) {
@@ -45,7 +45,67 @@ function analyzeJsonStructure(data) {
         }
         return { type: typeof value };
     }
-    return analyze(data);
+    const metadata = analyze(data);
+    metadata.key = 'root';
+    const seen = new Map();
+
+    function isSubset(a, b) {
+        for (let item of a) {
+            if (!b.has(item)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function walk(node, key = undefined) {
+        if (node.type === 'object') {
+            const propKeys = Object.keys(node.properties);
+            const props = propKeys.map(key => `${key}:${node.properties[key].type}`);
+            seen.set(key ?? node.key, new Set(props));
+            for (const key of propKeys) {
+                walk(node.properties[key]);
+            }
+        } else if (node.type === 'array') {
+            walk(node.elementType, singularize(node.key));
+        }
+    }
+    walk(metadata);
+    // todo: associate node key to object field id for reference when building models
+    // todo: determine how to parse refs when building models
+
+    function reduce(node) {
+        if (node.type === 'object') {
+            const props = seen.get(node.key);
+            for (const [k, v] of seen.entries()) {
+                if (k !== node.key && isSubset(props, v)) {
+                    delete node.properties;
+                    node.ref = k;
+                    seen.delete(node.key);
+                    break;
+                }
+            }
+            for (const prop of Object.keys(node.properties ?? {})) {
+                reduce(node.properties[prop]);
+            }
+        } else if (node.type === 'array') {
+            const key = singularize(node.key);
+            const props = seen.get(key);
+            for (const [k, v] of seen.entries()) {
+                if (k !== key && isSubset(props, v)) {
+                    delete node.elementType;
+                    node.ref = k;
+                    seen.delete(key);
+                    break;
+                }
+            }
+            for (const prop of Object.keys(node.elementType?.properties ?? {})) {
+                reduce(node.elementType.properties[prop]);
+            }
+        }
+    }
+    reduce(metadata);
+    return metadata;
 }
 
 module.exports = analyzeJsonStructure;
