@@ -1,4 +1,4 @@
-const { singularize, getParentRef, getNodeKey, getTypeName} = require('./utils');
+const { singularize, getParentRef, getSchemaKey, getTypeName} = require('./utils');
 
 function generateTypeScriptModels(metadata, rootName = "Root") {
     const { schema, refs } = metadata;
@@ -23,7 +23,7 @@ function generateTypeScriptModels(metadata, rootName = "Root") {
                     if (meta.elementType.type === 'object') {
                         if (meta.ref) {
                             const ref = getParentRef(refs, meta.ref) ?? meta.ref;
-                            return `Array<${getTypeName(getNodeKey(ref))}>`;
+                            return `Array<${getTypeName(getSchemaKey(ref))}>`;
                         }
                         const typeName = getTypeName(singularize(propName));
                         addModel(typeName, meta.elementType);
@@ -35,7 +35,7 @@ function generateTypeScriptModels(metadata, rootName = "Root") {
             case 'object':
                 if (meta.ref) {
                     const ref = getParentRef(refs, meta.ref) ?? meta.ref;
-                    return getTypeName(getNodeKey(ref));
+                    return getTypeName(getSchemaKey(ref));
                 }
                 const typeName = getTypeName(propName);
                 addModel(typeName, meta);

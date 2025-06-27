@@ -1,4 +1,4 @@
-const { singularize, getNodeKey, getParentRef, getTypeName} = require('./utils');
+const { singularize, getSchemaKey, getParentRef, getTypeName } = require('./utils');
 
 const SERIALIZERS = {
     'jackson': {
@@ -49,7 +49,7 @@ function generateJavaModels(metadata, rootName = "Root",  options) {
                     if (meta.elementType.type === 'object') {
                         if (meta.ref) {
                             const ref = getParentRef(refs, meta.ref) ?? meta.ref;
-                            return `List<${getTypeName(getNodeKey(ref))}>`;
+                            return `List<${getTypeName(getSchemaKey(ref))}>`;
                         }
                         const typeName = getTypeName(singularize(propName));
                         addClass(typeName, meta.elementType);
@@ -61,7 +61,7 @@ function generateJavaModels(metadata, rootName = "Root",  options) {
             case 'object':
                 if (meta.ref) {
                     const ref = getParentRef(refs, meta.ref) ?? meta.ref;
-                    return getTypeName(getNodeKey(ref));
+                    return getTypeName(getSchemaKey(ref));
                 }
                 const typeName = getTypeName(propName);
                 addClass(typeName, meta);
@@ -89,22 +89,21 @@ function generateJavaModels(metadata, rootName = "Root",  options) {
             }
             lines.push(`\tprivate ${toJavaType(val, key)} ${key};`);
         }
-        lines.push('');
 
         // Getters and setters
         for (const [key, val] of Object.entries(meta.properties)) {
             const type = toJavaType(val, key);
             const capKey = getTypeName(key);
 
+            lines.push('');
             lines.push(`\tpublic ${type} get${capKey}() {`);
             lines.push(`\t\treturn ${key};`);
             lines.push('\t}');
-            lines.push('');
 
+            lines.push('');
             lines.push(`\tpublic void set${capKey}(${type} ${key}) {`);
             lines.push(`\t\tthis.${key} = ${key};`);
             lines.push('\t}');
-            lines.push('');
         }
 
         lines.push('}');

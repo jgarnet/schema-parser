@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",
-  "dependencies": {},
+  "dependencies": {
+    "luxon": "^3.6.1"
+  },
   "scripts": {
     "generate": "node scripts/generate.js"
   }

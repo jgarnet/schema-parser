@@ -12,8 +12,7 @@ function singularize(name) {
     return name;
 }
 
-// todo: account for all uppercase values
-function toCamel(name, symbol) {
+function _toCamel(name, symbol) {
     const parts = name?.toLowerCase().split(symbol);
     if (parts.length > 1) {
         return parts[0].toLowerCase() + parts.slice(1).map(capitalize).join('');
@@ -22,11 +21,24 @@ function toCamel(name, symbol) {
 }
 
 function snakeToCamel(name) {
-    return toCamel(name, '_');
+    return _toCamel(name, '_');
 }
 
 function dashToCamel(name) {
-    return toCamel(name, '-');
+    return _toCamel(name, '-');
+}
+
+function toCamel(name) {
+    if (name.indexOf('-') !== -1) {
+        name = dashToCamel(name);
+    }
+    if (name.indexOf('_') !== -1) {
+        name = snakeToCamel(name);
+    }
+    if (/^[A-Z]*$/.test(name)) {
+        name = name.toLowerCase();
+    }
+    return name;
 }
 
 function getOptions() {
@@ -39,9 +51,17 @@ function getOptions() {
         const arg = args[i];
         if (arg.startsWith('--')) {
             const key = dashToCamel(arg.slice(2));
-            const value = i + 1 < args.length ? args[i + 1] : null;
+            let value = i + 1 < args.length ? args[i + 1] : true;
+            if (typeof value === 'string') {
+                // boolean flags
+                if (value.startsWith('--') || value.trim().toLowerCase() === 'true') {
+                    value = true;
+                } else if (value.trim().toLowerCase() === 'false') {
+                    value = false;
+                }
+            }
             options[key] = value;
-            if (value !== null) {
+            if (value !== null && value !== true) {
                 i++;
             }
         }
@@ -49,7 +69,12 @@ function getOptions() {
     return options;
 }
 
-function getNodeKey(key) {
+/**
+ * Retrieves original node key based on schema definition (removing nest level suffix).
+ * @param key The node key with nest level (i.e. node-1).
+ * @returns {string} The schema key (i.e. node).
+ */
+function getSchemaKey(key) {
     const parts = key.split('-');
     return parts.slice(0, parts.length - 1).join('');
 }
@@ -62,12 +87,7 @@ function getParentRef(refs, key, inChain = false) {
 }
 
 function getTypeName(name) {
-    if (name.indexOf('-') !== -1) {
-        name = dashToCamel(name);
-    }
-    if (name.indexOf('_') !== -1) {
-        name = snakeToCamel(name);
-    }
+    toCamel(name);
     return capitalize(name);
 }
 
@@ -77,7 +97,8 @@ module.exports = {
     snakeToCamel,
     getOptions,
     dashToCamel,
-    getNodeKey,
+    getSchemaKey,
     getParentRef,
-    getTypeName
+    getTypeName,
+    toCamel
 };

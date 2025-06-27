@@ -17,7 +17,7 @@ function execute() {
     const type = options['type'] ?? 'invalid';
     const rootName = capitalize(options['rootName']);
     const input = readFileSync('input.txt', 'utf-8');
-    const metadata = generateMetadata(JSON.parse(input));
+    const metadata = generateMetadata(JSON.parse(input), options);
     switch (type.toLowerCase()) {
         case 'java':
             stageOutput();
