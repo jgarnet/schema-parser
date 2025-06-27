@@ -17,7 +17,7 @@ Each identified model will be written to its own file in the `output` directory.
 The type of output models to generate.
 
 ```shell
-yarn generate --type $outputType
+yarn generate --type java
 ```
 
 The supported output types are:
