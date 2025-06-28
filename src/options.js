@@ -24,6 +24,7 @@ function buildOptions() {
         }
     }
     return {
+        rootName: process.env.SP_ROOT_NAME ?? 'Root',
         type: process.env.SP_TYPE ?? 'java',
         disableReduce: process.env.SP_DISABLE_REDUCE ?? false,
         serializer: process.env.SP_SERIALIZER ?? 'jackson',

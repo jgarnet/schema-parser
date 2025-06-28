@@ -12,7 +12,11 @@ Each identified model will be written to its own file in the `output` directory.
 
 ### Options
 
+All options may be specified via `.env` if desired. See [.env.example](.env.example) for reference.
+
 #### --type
+
+**Default**: `java`
 
 The type of output models to generate.
 
@@ -26,6 +30,8 @@ The supported output types are:
 
 #### --rootName
 
+**Default**: `Root`
+
 Optional root model name which will be used to name the root model:
 
 ```shell
@@ -34,6 +40,8 @@ yarn generate --type java --root-name MyClass
 If omitted, the root model name will default to `Root`.
 
 #### --serializer
+
+**Default**: `jackson`
 
 If using `java` type, specifies how to serialize non camel-case fields.
 
@@ -47,6 +55,8 @@ The supported serializers are:
 - jakarta
 
 #### --disable-reduce
+
+**Default**: `false`
 
 Disables model reduction step, which is responsible for de-duplicating common object structures.
 
@@ -80,7 +90,7 @@ interface Bar {
 }
 ```
 
-With reduction disabled, each object gets its own type, regardless of common field overlap:
+With reduction disabled, each object gets its own type, regardless if it shares the same type structure as other objects:
 
 ```typescript
 const input = {
@@ -106,4 +116,14 @@ interface Foo {
 interface Bar {
     name: string;
 }
+```
+
+#### --log
+
+**Default**: `false`
+
+Enables console logging for debugging purposes.
+
+```shell
+yarn generate --log
 ```
