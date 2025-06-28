@@ -7,6 +7,7 @@ function isDate(value) {
     return dt.isValid;
 }
 
+// todo: explore considering node keys in the case of recursive self-references (i.e. remove node key from consideration during evaluation)
 function isSubset(a, b) {
     if (!a || !b) return false;
     for (let item of a) {
