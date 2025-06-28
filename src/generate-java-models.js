@@ -1,4 +1,6 @@
 const { singularize, getSchemaKey, getParentRef, getTypeName } = require('./utils');
+const getOptions = require('./options');
+const {warn, info} = require('./log');
 
 const SERIALIZERS = {
     'jackson': {
@@ -19,16 +21,16 @@ const SERIALIZERS = {
  * Generate Java classes recursively from metadata
  * @param metadata Contains the object schema parsed from the input file.
  * @param rootName The name of the root element in the schema.
- * @param options Configuration options.
  * @returns {any[]} Array of Java class definitions.
  */
-function generateJavaModels(metadata, rootName = "Root",  options) {
+function generateJavaModels(metadata, rootName = "Root") {
+    const options = getOptions();
     const { schema, refs } = metadata;
     if (schema.type !== 'object') throw new Error('Root must be an object');
 
     const serializer = options['serializer']?.toLowerCase();
     if (serializer && !SERIALIZERS[serializer]) {
-        console.warn(`Unsupported serializer ${serializer}`);
+        warn(`Unsupported serializer ${serializer}`);
     }
     const classes = new Map();
 
@@ -77,6 +79,7 @@ function generateJavaModels(metadata, rootName = "Root",  options) {
         if (meta.ref) {
             return;
         }
+        info(`Adding class ${className}`);
 
         const lines = [];
         lines.push(`public class ${className} {`);

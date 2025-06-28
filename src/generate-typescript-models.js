@@ -1,4 +1,5 @@
 const { singularize, getParentRef, getSchemaKey, getTypeName} = require('./utils');
+const {info} = require('./log');
 
 function generateTypeScriptModels(metadata, rootName = "Root") {
     const { schema, refs } = metadata;
@@ -49,6 +50,7 @@ function generateTypeScriptModels(metadata, rootName = "Root") {
         if (models.has(name)) return;
         if (meta.type !== 'object') return;
         if (meta.ref) return;
+        info(`Adding type ${name}`);
         models.set(name, meta);
         for (const [key, val] of Object.entries(meta.properties)) {
             if (val.type === 'object') {

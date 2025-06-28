@@ -1,5 +1,6 @@
 const {singularize, getSchemaKey, getParentRef, toCamel} = require('./utils');
 const {DateTime} = require('luxon');
+const {info} = require('./log');
 const DECIMAL_REGEX = /^-?\d+(\.\d+)$/;
 
 function isDate(value) {
@@ -7,15 +8,64 @@ function isDate(value) {
     return dt.isValid;
 }
 
-// todo: explore considering node keys in the case of recursive self-references (i.e. remove node key from consideration during evaluation)
-function isSubset(a, b) {
+function equalsSet(a, b) {
     if (!a || !b) return false;
+    if (a.size !== b.size) return false;
     for (let item of a) {
         if (!b.has(item)) {
             return false;
         }
     }
     return true;
+}
+
+/**
+ * Serializes type signature. Used to identify common type structures to reduce model footprint.
+ * @param node The target node.
+ * @param key The key of the property being checked.
+ * @returns {string} The type signature.
+ */
+function serializeType(node, key) {
+
+    function serializeObject(object) {
+        let result = '{';
+        const subProps = [];
+        for (const subProp of Object.keys(object.properties).sort()) {
+            subProps.push(serializeType(object, subProp));
+        }
+        result += subProps.join(',');
+        result += '}';
+        return result;
+    }
+
+    function serializeArray(array) {
+        let result = '[';
+        const types = Array.isArray(array.elementType) ? array.elementType : [array.elementType];
+        const subTypes = [];
+        for (const type of types.sort()) {
+            if (type.type === 'object') {
+                subTypes.push(serializeObject(type));
+            } else if (type.type === 'array') {
+                subTypes.push(serializeArray(type));
+            } else {
+                subTypes.push(type.type);
+            }
+        }
+        result += subTypes.join(',');
+        result += ']';
+        return result;
+    }
+
+    const prop = node.properties[key];
+    let signature = `${key}:`;
+    if (prop.type === 'object') {
+        signature += serializeObject(prop);
+    } else if (prop.type === 'array') {
+        signature += serializeArray(prop);
+    } else {
+        signature += prop.type;
+    }
+    return signature;
 }
 
 /**
@@ -73,6 +123,7 @@ function generateMetadata(data, options = {}) {
         return { type: typeof value };
     }
 
+    info('Analyzing schema');
     const schema = analyze(data);
     schema.key = 'root';
     const seen = new Map(); // keep track of common object structures
@@ -89,7 +140,8 @@ function generateMetadata(data, options = {}) {
             if (node.type === 'object') {
                 node.nestLevel = nestLevel;
                 const propKeys = Object.keys(node.properties);
-                const props = propKeys.map(key => `${key}:${node.properties[key].type}`);
+                // const props = propKeys.map(key => `${key}:${node.properties[key].type}`);
+                const props = propKeys.map(key => serializeType(node, key));
                 seen.set(`${key ?? node.key}-${nestLevel}`, new Set(props));
                 for (const key of propKeys) {
                     markSeen(node.properties[key], nestLevel + 1);
@@ -111,7 +163,7 @@ function generateMetadata(data, options = {}) {
                 const props = seen.get(nodeKey);
                 for (const [_k, v] of seen.entries()) {
                     const k = getSchemaKey(_k);
-                    if (k !== node.key && isSubset(props, v)) {
+                    if (k !== node.key && equalsSet(props, v)) {
                         delete node.properties;
                         const targetRef = getParentRef(refs, _k) ?? _k;
                         node.ref = targetRef;
@@ -129,7 +181,7 @@ function generateMetadata(data, options = {}) {
                 const props = seen.get(key);
                 for (const [_k, v] of seen.entries()) {
                     const k = getSchemaKey(_k);
-                    if (k !== nodeKey && isSubset(props, v)) {
+                    if (k !== nodeKey && equalsSet(props, v)) {
                         delete node.elementType;
                         const targetRef = getParentRef(refs, _k) ?? _k;
                         node.ref = targetRef;
@@ -143,6 +195,7 @@ function generateMetadata(data, options = {}) {
                 }
             }
         }
+        info('Reducing common schema types');
         reduce(schema);
     }
     return { schema, refs };

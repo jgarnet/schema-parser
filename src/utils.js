@@ -1,3 +1,4 @@
+require('dotenv').config();
 function capitalize(str) {
     if (!str) {
         return str;
@@ -41,34 +42,6 @@ function toCamel(name) {
     return name;
 }
 
-function getOptions() {
-    const options = {};
-    if (process.argv.length < 3) {
-        return options;
-    }
-    const args = process.argv.slice(2);
-    for (let i = 0; i < args.length; i++) {
-        const arg = args[i];
-        if (arg.startsWith('--')) {
-            const key = dashToCamel(arg.slice(2));
-            let value = i + 1 < args.length ? args[i + 1] : true;
-            if (typeof value === 'string') {
-                // boolean flags
-                if (value.startsWith('--') || value.trim().toLowerCase() === 'true') {
-                    value = true;
-                } else if (value.trim().toLowerCase() === 'false') {
-                    value = false;
-                }
-            }
-            options[key] = value;
-            if (value !== null && value !== true) {
-                i++;
-            }
-        }
-    }
-    return options;
-}
-
 /**
  * Retrieves original node key based on schema definition (removing nest level suffix).
  * @param key The node key with nest level (i.e. node-1).
@@ -95,7 +68,6 @@ module.exports = {
     capitalize,
     singularize,
     snakeToCamel,
-    getOptions,
     dashToCamel,
     getSchemaKey,
     getParentRef,
