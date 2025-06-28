@@ -99,6 +99,11 @@ function generateMetadata(data, options = {}) {
         }
         markSeen(schema);
 
+        /**
+         * Identifies re-usable object structures and replaces repetitions with references to reduce model footprint.
+         * When repetitions are found, the deepest nested structure / key is favored.
+         * @param node The node being reduced.
+         */
         function reduce(node) {
             if (node.type === 'object') {
                 const nodeKey = getKey(node);
