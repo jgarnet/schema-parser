@@ -104,6 +104,7 @@ function generateMetadata(data, options = {}) {
                 return { type: 'array', elementType: elementTypeObjs };
             }
         }
+        // todo: determine how to detect map / dictionary vs actual object
         if (typeof value === 'object') {
             const props = {};
             for (const key in value) {
