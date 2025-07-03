@@ -8,6 +8,10 @@ Parses the contents of a target input (i.e. JSON payload) and produces models ba
 
 Write the contents of the target schema into `input.txt`, then run the `generate` command:
 
+```shell
+yarn generate
+```
+
 Each identified model will be written to its own file in the `output` directory.
 
 ### Options
@@ -53,6 +57,16 @@ The supported serializers are:
 - jackson
 - gson
 - jakarta
+
+#### --package
+
+**Default**: `null`
+
+If using `java` type, adds package declaration to each model when defined.
+
+```shell
+yarn generate --type java --package "com.example.models"
+```
 
 #### --disable-reduce
 

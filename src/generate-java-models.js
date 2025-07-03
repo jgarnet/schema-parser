@@ -33,44 +33,13 @@ function generateJavaModels(metadata, rootName = "Root") {
         warn(`Unsupported serializer ${serializer}`);
     }
     const classes = new Map();
+    const imports = new Map();
 
-    function toJavaType(meta, propName) {
-        switch (meta.type) {
-            case 'string': return 'String';
-            case 'decimal': return 'Double';
-            case 'integer': return 'Integer';
-            case 'date': return 'Date';
-            case 'boolean': return 'Boolean';
-            case 'null': return 'Object';
-            case 'any': return 'Object';
-            case 'array':
-                if (Array.isArray(meta.elementType)) {
-                    // heterogeneous array: fallback to Object
-                    return 'List<Object>';
-                } else {
-                    if (meta.elementType.type === 'object') {
-                        if (meta.ref) {
-                            const ref = getParentRef(refs, meta.ref) ?? meta.ref;
-                            return `List<${getTypeName(getSchemaKey(ref))}>`;
-                        }
-                        const typeName = getTypeName(singularize(propName));
-                        addClass(typeName, meta.elementType);
-                        return `List<${typeName}>`;
-                    } else {
-                        return `List<${toJavaType(meta.elementType, propName)}>`;
-                    }
-                }
-            case 'object':
-                if (meta.ref) {
-                    const ref = getParentRef(refs, meta.ref) ?? meta.ref;
-                    return getTypeName(getSchemaKey(ref));
-                }
-                const typeName = getTypeName(propName);
-                addClass(typeName, meta);
-                return typeName;
-            default:
-                return 'Object';
+    function addImport(className, importLine) {
+        if (!imports.has(className)) {
+            imports.set(className, new Set());
         }
+        imports.get(className).add(importLine);
     }
 
     function addClass(className, meta) {
@@ -84,11 +53,54 @@ function generateJavaModels(metadata, rootName = "Root") {
         const lines = [];
         lines.push(`public class ${className} {`);
 
+        function toJavaType(meta, propName) {
+            switch (meta.type) {
+                case 'string': return 'String';
+                case 'decimal': return 'Double';
+                case 'integer': return 'Integer';
+                case 'date':
+                    addImport(className, 'import java.util.Date;');
+                    return 'Date';
+                case 'boolean': return 'Boolean';
+                case 'null': return 'Object';
+                case 'any': return 'Object';
+                case 'array':
+                    addImport(className, 'import java.util.List;');
+                    if (Array.isArray(meta.elementType)) {
+                        // heterogeneous array: fallback to Object
+                        return 'List<Object>';
+                    } else {
+                        if (meta.elementType.type === 'object') {
+                            if (meta.ref) {
+                                const ref = getParentRef(refs, meta.ref) ?? meta.ref;
+                                return `List<${getTypeName(getSchemaKey(ref))}>`;
+                            }
+                            const typeName = getTypeName(singularize(propName));
+                            addClass(typeName, meta.elementType);
+                            return `List<${typeName}>`;
+                        } else {
+                            return `List<${toJavaType(meta.elementType, propName)}>`;
+                        }
+                    }
+                case 'object':
+                    if (meta.ref) {
+                        const ref = getParentRef(refs, meta.ref) ?? meta.ref;
+                        return getTypeName(getSchemaKey(ref));
+                    }
+                    const typeName = getTypeName(propName);
+                    addClass(typeName, meta);
+                    return typeName;
+                default:
+                    return 'Object';
+            }
+        }
+
         // Fields
         for (const [key, val] of Object.entries(meta.properties)) {
             if (SERIALIZERS[serializer] && key !== val.key) {
-                const { annotation } = SERIALIZERS[serializer];
+                const { annotation, importLine } = SERIALIZERS[serializer];
                 lines.push(`\t${annotation(val.key)}`);
+                addImport(className, importLine);
             }
             lines.push(`\tprivate ${toJavaType(val, key)} ${key};`);
         }
@@ -110,6 +122,26 @@ function generateJavaModels(metadata, rootName = "Root") {
         }
 
         lines.push('}');
+
+        // import lines
+
+        if (imports.has(className)) {
+            const importLines = imports.get(className);
+            // whitespace before class declaration
+            lines.unshift('');
+            // reverse sort order of import lines so unshift orders alphabetically sorted
+            for (const importLine of [...importLines].sort((a, b) => b.localeCompare(a))) {
+                lines.unshift(importLine);
+            }
+        }
+
+        // package
+
+        if (options['package']) {
+            lines.unshift('');
+            lines.unshift(`package ${options['package']};`);
+        }
+
         classes.set(className, lines.join('\n'));
     }
 
